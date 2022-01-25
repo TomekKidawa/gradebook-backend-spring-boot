@@ -7,12 +7,18 @@ import com.example.gradebook.payload.response.MessageResponse;
 import com.example.gradebook.repository.UserRepository;
 import com.example.gradebook.security.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -28,9 +34,28 @@ public class UserController {
     UserRepository userRepository;
 
     @GetMapping("/all")
-    public ResponseEntity<List<User>>getAllUsers(){
-        List<User> user = userService.findAllUsers();
-        return new ResponseEntity<>(user, HttpStatus.OK);
+    public ResponseEntity<Map<String, Object>> getAllUsers(@RequestParam(required = false)String username,
+                                                           @RequestParam(defaultValue = "0")int page,
+                                                           @RequestParam (defaultValue = "3") int size){
+        List<User> users = new ArrayList<User>();
+        Pageable paging = PageRequest.of(page, size);
+        Page<User> pageUsers;
+        if(username == null){
+            pageUsers = userService.findAllUsers(paging);
+        }else{
+            pageUsers = userService.findAllUsersByUsername(username, paging);
+        }
+
+        users = pageUsers.getContent();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("users", users);
+        response.put("currentPage", pageUsers.getNumber());
+        response.put("totalItems", pageUsers.getTotalElements());
+        response.put("totalPages", pageUsers.getTotalPages());
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+
     }
 
     @GetMapping("{id}")
@@ -45,13 +70,6 @@ public class UserController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    ////Works but not
-//
-//    @PostMapping("/edit/{id}")
-//    public ResponseEntity<User>updateUser(@RequestBody User user){
-//        User updateUser = userService.updateUser(user);
-//    return  new ResponseEntity<>(updateUser, HttpStatus.OK);
-//    }
 
     //dodac pre authorize
     @PostMapping("/edit/{id}")
